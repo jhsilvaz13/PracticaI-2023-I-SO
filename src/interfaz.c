@@ -1,7 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "interfaz.h" 
 
-int* home(void){
+int* home(){
     printf("Bienvenido\n"
             "1. Ingresar origen\n"
             "2. Ingresar destino\n"
@@ -11,12 +12,13 @@ int* home(void){
     return input();
 };
 
-int* input(){
+void input(){
 
     int *arrayData=malloc(3*sizeof(int));/*/Arreglo de tres posiciones*/
     
     if(arrayData==NULL){
         perror("Error en la asignación de memoria");
+        return arrayData ;
     }
     
     printf("Ingrese ID del origen: ");
@@ -30,7 +32,7 @@ int* input(){
     printf("Ingrese hora: ");
     scanf("%d", arrayData+2);
     errors((arrayData+2), 0, 23);
-    
+    return arrayData ;
 };
 
 void errors(int *value, int left, int right){
