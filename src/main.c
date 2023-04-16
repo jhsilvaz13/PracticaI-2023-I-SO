@@ -45,7 +45,7 @@ main(){
 
             // Se ejecuta la busqueda haciendo uso de la memoria compartida con los datos expuestos    
             search(shm);
-        
+            
         }
     }
     r = shmdt(shm);  //desasociar espacio de memoria compartida
