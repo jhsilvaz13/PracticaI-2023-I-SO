@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "search.h"
 
-void searc(int *arrayData){
-    printf("Los datos ingresados fueron: %d, %d, %d\n", *arrayData, *(arrayData+1), *(arrayData+2));
+void search(int *data){
+    printf("La dirección de memoria: %p\n", data);
+    printf("Los datos ingresados fueron: %d, %d, %d\n", *data, *(data+1), *(data+2));
 }

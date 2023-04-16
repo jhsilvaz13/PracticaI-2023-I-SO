@@ -1,24 +1,21 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "interfaz.h" 
 
-int* home(void){
+int* input(int *shm){
+    /*Imprimir interfaz del home*/
     printf("Bienvenido\n"
             "1. Ingresar origen\n"
             "2. Ingresar destino\n"
             "3. Ingresar hora\n"
             "4. Buscar tiempo de viaje medio\n"
             "5. Salir\n");
-    return input();
-};
-
-int* input(){
-
-    int *arrayData=malloc(3*sizeof(int));/*/Arreglo de tres posiciones*/
-    
+    /*Asignar a un puntero la direccion de la memoria compartida*/
+    static int* arrayData=NULL;
     if(arrayData==NULL){
-        perror("Error en la asignación de memoria");
+        arrayData=shm;
     }
-    
+    /*Pedir al usario que ingrese los datos y almacenarlos en las direcciones 0,1,2 de la memoria compartida*/
     printf("Ingrese ID del origen: ");
     scanf("%d", arrayData+0);
     errors((arrayData+0), 1, 1160);
@@ -30,7 +27,8 @@ int* input(){
     printf("Ingrese hora: ");
     scanf("%d", arrayData+2);
     errors((arrayData+2), 0, 23);
-    
+
+    return arrayData;
 };
 
 void errors(int *value, int left, int right){
