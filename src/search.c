@@ -17,6 +17,7 @@ typedef struct{
     int size ; // Tamaño de la tabla hash
     int buckets; // Número de buckets disponibles
     int* keys ; // Array de keys
+
     char** values; // Array de valores 
     char** values2; // Array de valores 
     char** values3; // Array de valores 
@@ -115,13 +116,6 @@ int insertar(hash_table *hash_table,int sourceid, int dstid,int hod,int media){
 
     // Si el array esta vacio se inserta ahí
     
-    /*
-    
-    for(int a = 0 ; a < (sizeof(hash_table->values) / sizeof(char*)); a++){
-        printf("%d %d\n",a,hash_table->keys[a]);
-    }
-    */
-    
     
     if(hash_table->keys[index] == 0){
 
@@ -134,43 +128,10 @@ int insertar(hash_table *hash_table,int sourceid, int dstid,int hod,int media){
         hash_table->values[index] = arr[0] ;
         hash_table->values2[index] = arr[1] ;
         hash_table->values3[index] = media;
-        //printf("-> %d %d \n",hash_table->values3[index],media);
         hash_table->buckets --; // Se resta para saber que quedan menos buckets libres
         
-        //printf("%d %d %d %d \n",sourceid,hod,arr[0],arr[1]);
-        //printf("key %d values %d %d \n", hash_table->keys[index],hash_table->values[index],(hash_table->values2[index]));
     }
-    /*
-    else{// Si no esta libre hay una colisión
 
-        int rehash = index; // Se aplica un rehash para encontrar un bucket
-
-        for(;;){
-            rehash = (rehash + 1 ) % hash_table->size;
-
-        
-        // Si el array esta vacio se inserta ahí
-
-        if(hash_table->values[index] == NULL ){
-            // Creación de arreglo para los valores
-            int* arr = (int*) malloc(2 * sizeof(int));
-
-            arr[0] = dstid;
-            arr[1] = hod;
-
-            hash_table->keys[index] = sourceid ; 
-            hash_table->values[index] = arr[0] ;
-            hash_table->values2[index] = arr[1] ;
-            
-
-            hash_table->buckets --; // Se resta para saber que quedan menos buckets libres
-            
-            break ; // Salir del bucle infinito
-        }}
-        
-    return 0;
-
-    }*/
     
 };
 
@@ -201,7 +162,7 @@ void search(int *data){
 
     int num_rows = count_rows(file);
 
-    printf("El archivo tiene %d filas.\n", num_rows);
+
     fclose(file);
     
     /* Creación de la tabla hash */
@@ -241,13 +202,10 @@ void search(int *data){
     
     index = *data % tabla->size;
 
-    printf("Datos-> %d %d %d %d %d %d %d\n",tabla->keys[index], *data, tabla->values[index],*(data+1),tabla->values2[index],*(data+2),tabla->values3[index]);
-    
-    
     if(*data ==tabla->keys[index] && *(data+1) == tabla->values[index] && *(data+2) == tabla->values2[index] ){
         printf("Tiempo de viaje medio -> %d \n",tabla->values3[index]);
     }else{
-        printf("No existe");
+        printf("NA");
     }
     
 
