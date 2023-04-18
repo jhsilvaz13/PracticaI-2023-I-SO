@@ -7,11 +7,22 @@
 #define ELEM_HASH 2000
 #define MAX_LONGITUD_VALOR 200
 
+//sourceid,dstid,hod,mean_travel_time
+
+/* Esta es la estructura que representa 
+ * los valores a guardar por llave de 
+ * la hash table */
+typedef struct value {
+    int dsrID;
+    int hod;
+    float mean_travel_time;
+}StrValue;
+
 /* Esta es la estructura que representa 
  * cada entrada de la hash table */
 typedef struct entrada {
     int key;
-    char value[MAX_LONGITUD_VALOR];
+    StrValue *value;
     struct entrada *siguiente;
 }StrEntrada;
 
@@ -31,10 +42,11 @@ typedef struct HashTable {
  * podemos manipular nuestra hash table */
 HashTable_t *crearHash(int num_elements);
 int destruirHash(HashTable_t **hashTablePP);
-int insertar(HashTable_t *hashTableP, int key, char *value);
+int insertar(FILE *arch, int key, StrValue *value);
 int imprimir(HashTable_t *hashTableP);
 HashTable_t *cargar_tabla_hash(char *nombre_archivo);
 void guardar_tabla_hash(HashTable_t *tabla, char *nombre_archivo);
+void search(HashTable_t *tabla_hash, int org, int dst);
 
 
 int main()
@@ -43,9 +55,14 @@ int main()
   mi_tablaP = crearHash(ELEM_HASH);
   
   FILE *datos = fopen("bogota-cadastral-2019-3-All-HourlyAggregate.csv", "r");
+  FILE *tablafl = fopen("tabla_hash.dat", "rb+");
 
     if (!datos) {
-      printf("No se pudo abrir el archivo\n");
+      printf("No se pudo abrir el archivo de datos\n");
+      exit(1);
+    }
+    if (!tablafl) {
+      printf("No se pudo abrir el archivo de la tabla hash\n");
       exit(1);
     }
 
@@ -54,47 +71,43 @@ int main()
       //leer el archivo csv y guardar los datos relevantes en la tabla hash
       int origenID, i = 1;
       char *campo;
-      char *dstID;
-      char *tiempo;
-      char *valor;
+      StrValue *valor;
       campo = strtok(linea, ",");
       
-      while(campo != NULL && i<=3){
+      while(campo != NULL && i<=4){
         switch (i)
         {
         case 1:
           origenID = (int) strtol(campo, NULL, 10);
           break;
         case 2:
-          dstID = campo;
+          valor->dsrID = (int) strtol(campo, NULL, 10);
           break;
         case 3:
-          tiempo = campo;
-          valor = strcat(strcat(dstID, ","), tiempo);
+          valor->hod = (int) strtol(campo, NULL, 10);
           break;
+        case 4:
+          valor->mean_travel_time = (float) strtol(campo, NULL, 10);
+          break;  
         default:
           break;
         }
         campo = strtok(NULL, ",");
         i++;
       }
-      insertar(mi_tablaP, origenID, valor);
+      insertar(tablafl, origenID, valor);
     }
-  
-  
-  // insertar(mi_tablaP, 1160, "Item a");
-  // insertar(mi_tablaP, 1160, "Item X"); // Este va a colisionar con el elemento anterior
-  // insertar(mi_tablaP, 18401, "Item b"); // Este va a colisionar con el elemento anterior
-  // insertar(mi_tablaP, 10002, "Item c"); // Este tambien :(
-  // insertar(mi_tablaP, 15554, "Item d");
-  // insertar(mi_tablaP, 14955, "Item e");
-  // insertar(mi_tablaP, 10095, "Item f");
 
-  imprimir(mi_tablaP);
+  //imprimir(mi_tablaP);
 
-  guardar_tabla_hash(mi_tablaP, "tabla_hash.dat");
+  //guardar_tabla_hash(mi_tablaP, "tabla_hash.dat");
+
+  //search(mi_tablaP, 462, 1028);
 
   destruirHash(&mi_tablaP);
+
+  fclose(datos);
+  fclose(tablafl);
 
   return 0;
 }
@@ -122,21 +135,7 @@ HashTable_t *crearHash(int num_elements)
     for (int i = 0; i < num_elements; i++) {
         temp_tablaP->entradas[i] = NULL;
     }
-
-  // Necesitamos crear un arreglo para guardar las llaves
-  // temp_tablaP->keys = calloc(num_elements, sizeof(int));
-  // if (temp_tablaP->keys== NULL) {
-  //   destruirHash(&temp_tablaP);
-  //   return NULL;
-  // }
-
-  // // Y también un arreglo para guardar los valores
-  // temp_tablaP->values = calloc(num_elements, sizeof(char *));
-  // if (temp_tablaP->values == NULL) {
-  //   destruirHash(&temp_tablaP);
-  //   return NULL;
-  // }
-
+    
   // Al final devolvemos el apuntador a la recién creada 
   // estructura
   return temp_tablaP;
@@ -187,10 +186,10 @@ int destruirHash(HashTable_t **hashTablePP)
  * estructura, así como la llave y el valor que deseamos
  * insertar.
  */
-StrEntrada *crear_entrada(int key, char *value) {
+StrEntrada *crear_entrada(int key, StrValue *value) {
     StrEntrada *entrada_nueva = malloc(sizeof(StrEntrada));
     entrada_nueva->key = key;
-    strcpy(entrada_nueva->value, value);
+    entrada_nueva->value = value;
     entrada_nueva->siguiente = NULL;
     return entrada_nueva;
 }
@@ -201,7 +200,7 @@ StrEntrada *crear_entrada(int key, char *value) {
  * estructura, así como la llave y el valor que deseamos
  * insertar.
  */
-int insertar(HashTable_t *hashTableP, int key, char *value)
+int insertar(HashTable_t *hashTableP, int key, StrValue *value)
 {
   int index;
 
@@ -220,10 +219,9 @@ int insertar(HashTable_t *hashTableP, int key, char *value)
   StrEntrada *entrada_actual = hashTableP->entradas[index];
   StrEntrada *entrada_anterior = NULL;
 
-  while (entrada_actual != NULL && entrada_actual->key != key) {
+  while (entrada_actual != NULL) {
         entrada_anterior = entrada_actual;
         entrada_actual = entrada_actual->siguiente;
-    }
     if (entrada_actual == NULL) {
         StrEntrada *entrada_nueva = crear_entrada(key, value);
         if (entrada_anterior == NULL) {
@@ -231,9 +229,8 @@ int insertar(HashTable_t *hashTableP, int key, char *value)
         } else {
             entrada_anterior->siguiente = entrada_nueva;
         }
-    } else {
-        strcpy(entrada_actual->value, value);
     }
+  }
 
   // Si el bucket esta libre, insertamos nuestro valor ahi
   // if (hashTableP->values[index] == NULL) {
@@ -278,7 +275,7 @@ int imprimir(HashTable_t *hashTableP)
             printf("Indice %d:\n", i);
             StrEntrada *actual = hashTableP->entradas[i];
             while (actual != NULL) {
-                printf("\tClave: %d, Valor: %s\n", actual->key, actual->value);
+                //printf("\tClave: %d, Valor: %s\n", actual->key, actual->value);
                 actual = actual->siguiente;
             }
         }
@@ -306,44 +303,64 @@ int imprimir(HashTable_t *hashTableP)
   return 0;
 }
 
-void guardar_tabla_hash(HashTable_t *tabla, char *nombre_archivo) {
-    FILE *archivo = fopen(nombre_archivo, "wb");
-    fwrite(&(tabla->num_elements), sizeof(int), 1, archivo);
-    for (int i = 0; i < tabla->num_elements; i++) {
-        StrEntrada *entrada_actual = tabla->entradas[i];
-        while (entrada_actual != NULL) {
-            fwrite(&(entrada_actual->key), sizeof(int), 1, archivo);
-            fwrite(entrada_actual->value, sizeof(char), strlen(entrada_actual->value) + 1, archivo);
-            entrada_actual = entrada_actual->siguiente;
-        }
-    }
-    fclose(archivo);
-}
+// void guardar_tabla_hash(HashTable_t *tabla, char *nombre_archivo) {
+//     FILE *archivo = fopen(nombre_archivo, "wb");
+//     fwrite(&(tabla->num_elements), sizeof(int), 1, archivo);
+//     for (int i = 0; i < tabla->num_elements; i++) {
+//         StrEntrada *entrada_actual = tabla->entradas[i];
+//         while (entrada_actual != NULL) {
+//             fwrite(&(entrada_actual->key), sizeof(int), 1, archivo);
+//             fwrite(entrada_actual->value, sizeof(char), strlen(entrada_actual->value) + 1, archivo);
+//             entrada_actual = entrada_actual->siguiente;
+//         }
+//     }
+//     fclose(archivo);
+// }
 
-HashTable_t *cargar_tabla_hash(char *nombre_archivo) {
-    FILE *archivo = fopen(nombre_archivo, "rb");
-    if (archivo == NULL) {
-        return NULL;
-    }
-    int tamanio;
-    fread(&tamanio, sizeof(int), 1, archivo);
-    HashTable_t *hashTableP = crearHash(tamanio);
-    for (int i = 0; i < tamanio; i++) {
-        StrEntrada *entrada_actual = NULL;
-        StrEntrada *entrada_anterior = NULL;
-        int clave;
-        char valor[MAX_LONGITUD_VALOR];
-        while (fread(&clave, sizeof(int), 1, archivo) == 1) {
-            fread(valor, sizeof(char), MAX_LONGITUD_VALOR, archivo);
-            entrada_actual = crear_entrada(clave, valor);
-            if (entrada_anterior == NULL) {
-                hashTableP->entradas[i] = entrada_actual;
-            } else {
-                entrada_anterior->siguiente = entrada_actual;
-            }
-            entrada_anterior = entrada_actual;
-        }
-    }
-    fclose(archivo);
-    return hashTableP;
+// HashTable_t *cargar_tabla_hash(char *nombre_archivo) {
+//     FILE *archivo = fopen(nombre_archivo, "rb");
+//     if (archivo == NULL) {
+//         exit(1);
+//     }
+//     int tamanio;
+//     fread(&tamanio, sizeof(int), 1, archivo);
+//     HashTable_t *hashTableP = crearHash(tamanio);
+//     for (int i = 0; i < tamanio; i++) {
+//         StrEntrada *entrada_actual = NULL;
+//         StrEntrada *entrada_anterior = NULL;
+//         int clave;
+//         StrValue valor;
+//         while (fread(&clave, sizeof(int), 1, archivo) == 1) {
+//             fread(valor, sizeof(char), MAX_LONGITUD_VALOR, archivo);
+//             entrada_actual = crear_entrada(clave, valor);
+//             if (entrada_anterior == NULL) {
+//                 hashTableP->entradas[i] = entrada_actual;
+//             } else {
+//                 entrada_anterior->siguiente = entrada_actual;
+//             }
+//             entrada_anterior = entrada_actual;
+//         }
+//     }
+//     fclose(archivo);
+//     return hashTableP;
+// }
+
+void search(HashTable_t *tabla_hash, int org, int dst){
+
+    int index = org % tabla_hash->num_elements;
+    StrEntrada *entrada_actual = tabla_hash->entradas[index];
+    StrValue *val = entrada_actual->value;
+    if(val->dsrID == dst) {
+        printf("Se encontró el origen %d con el destino %d, se tiene guardado en la hora del dia lo sig. %d\n", org, dst, val->hod);
+    }   
+//         // Guardar en variables diferentes los datos del archivo csv
+
+//         int sourced; 
+//         int dstid; 
+//         int hod;
+
+//         fscanf(file2,"%d,%d,%d",&sourceid,&dstid,&hod);
+//         fprintf(file2, "%s", "hola");
+    
+//         insertar(tabla,sourceid,dstid,hod);    
 }
