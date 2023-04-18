@@ -54,7 +54,7 @@ hash_table *create_hash(int size) {
         hash_table->keys[i] = 0 ;
     }
     
-    hash_table->values = calloc(size, sizeof(char *));
+    hash_table->values = calloc(size, sizeof(char *)); //cambiar size a 2
     hash_table->values2 = calloc(size, sizeof(char *));
     hash_table->values3 = calloc(size, sizeof(char *));
     
@@ -213,3 +213,10 @@ void search(int *data){
     
 
 }
+
+/*
+Cosas por hacer:
+1. Los datos deben quedar almacenados en un archivo binario, generar la tabla hash en memoria solo en la primera compilacion
+2. Comunicar el resultado de busqueda hacia el proceso hijo
+
+*/
