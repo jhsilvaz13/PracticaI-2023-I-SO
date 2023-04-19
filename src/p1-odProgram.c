@@ -6,6 +6,8 @@
 #include "interfaz.h"
 #include "search.h"
 
+#define MAX_LEN 10
+
 int* input();
 main(){
     // Variables
@@ -44,11 +46,21 @@ main(){
         while (wait(NULL)!=-1){/*Esperar hasta que el proceso hijo termine su ejecución*/
 
             // Se ejecuta la busqueda haciendo uso de la memoria compartida con los datos expuestos    
-            search(shm);
+            char *time = search(shm);
+            if(time != NULL){
+                printf("Tiempo de viaje medio -> %d \n", time);
+            }else{
+                printf("NA\n");
+            }
             
         }
     }
     r = shmdt(shm);  //desasociar espacio de memoria compartida
 
+    if (r < 0) //Verificación de que shmdt se ejecutó correctamente
+    {
+        perror("error al desasociar el espacio de memoria compartida ");
+        exit(-1);
+    }
     return 0;
 }

@@ -3,6 +3,9 @@
 #include <strings.h>
 #include "search.h"
 
+#define NUM_ROWS 2000         //Constante para no tener que leer el archivo dos veces (funciona perfecto sólo con 2000)
+#define NUM_ROWS_ORG 8543142  //Numero de filas original
+
 // Estructura para representar la información a buscar
 
 typedef struct {
@@ -54,8 +57,8 @@ hash_table *create_hash(int size) {
         hash_table->keys[i] = 0 ;
     }
     
-    hash_table->values = calloc(size, sizeof(char *)); //cambiar size a 2
-    hash_table->values2 = calloc(size, sizeof(char *));
+    hash_table->values = calloc(size, sizeof(char *)); //cambiar size a 2  
+    hash_table->values2 = calloc(size, sizeof(char *));//---> al cambiarlo no cumplen con la condición para que impriman el tiempo promedio
     hash_table->values3 = calloc(size, sizeof(char *));
     
     return hash_table;
@@ -147,30 +150,30 @@ int count_rows(FILE *file) {// Contar filas
 }
 
 
-void search(int *data){
+char * search(int *data){
     printf("\n\nLa dirección de memoria: %p\n", data);
     printf("Los datos ingresados fueron: %d, %d, %d\n", *data, *(data+1), *(data+2));
 
     // Obtener el tamaño de filas del archivo
     
-    FILE *file = fopen("datos.csv", "r");
+    // FILE *file = fopen("datos.csv", "r");
     
-    if (!file) {
-        printf("No se pudo abrir el archivo\n");
-        exit(1);
-    }
+    // if (!file) {
+    //     printf("No se pudo abrir el archivo\n");
+    //     exit(1);
+    // }
 
-    int num_rows = count_rows(file);
+    // int num_rows = count_rows(file);
+
+    // printf("Numero de columnas: %d", num_rows);
 
 
-    fclose(file);
+    // fclose(file);
     
     /* Creación de la tabla hash */
 
     hash_table *tabla = NULL;
-    tabla = create_hash(num_rows);
-
-
+    tabla = create_hash(NUM_ROWS);
     
     //   Insertar valores en la tabla hash */
     
@@ -203,9 +206,12 @@ void search(int *data){
     index = *data % tabla->size;
 
     if(*data ==tabla->keys[index] && *(data+1) == tabla->values[index] && *(data+2) == tabla->values2[index] ){
-        printf("Tiempo de viaje medio -> %d \n",tabla->values3[index]);
+        
+        //printf("Tiempo de viaje medio(search) -> %d \n",tabla->values3[index]);
+        return tabla->values3[index];
     }else{
-        printf("NA");
+        //printf("NA(search)\n");
+        return NULL;
     }
     
 
@@ -217,6 +223,9 @@ void search(int *data){
 /*
 Cosas por hacer:
 1. Los datos deben quedar almacenados en un archivo binario, generar la tabla hash en memoria solo en la primera compilacion
-2. Comunicar el resultado de busqueda hacia el proceso hijo
+2. Comunicar el resultado de busqueda hacia el proceso hijo --
+                    --> El proceso hijo ya acabó su ejecución cuando entra al search, 
+                        entonces simplemente se manda el resultado de la búsqueda al main
+3. Hacer la función de rehash (?)
 
 */
