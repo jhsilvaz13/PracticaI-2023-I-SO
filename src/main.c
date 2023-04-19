@@ -7,6 +7,7 @@
 #include "search.h"
 
 int* input();
+
 main(){
     // Variables
 
@@ -40,9 +41,7 @@ main(){
 
     }else{
         /*Padre*/
-        
         while (wait(NULL)!=-1){/*Esperar hasta que el proceso hijo termine su ejecución*/
-
             // Se ejecuta la busqueda haciendo uso de la memoria compartida con los datos expuestos    
             search(shm);
             

@@ -3,151 +3,77 @@
 #include <strings.h>
 #include "search.h"
 
+#define TABLE_SIZE 800000
+
 // Estructura para representar la información a buscar
 
 typedef struct {
-    int* origen;
-    int* destino;
-    float* tiempo;
-}Viaje;
-
-// Estructura para representar la tabla hash
+    int sourceid;
+    int dstid;
+    int hod;
+    float mean_travel_time;
+}travel;
 
 typedef struct{
-    int size ; // Tamaño de la tabla hash
-    int buckets; // Número de buckets disponibles
-    int* keys ; // Array de keys
-
-    char** values; // Array de valores 
-    char** values2; // Array de valores 
-    char** values3; // Array de valores 
-
-}hash_table;
+    travel t;
+    struct node *next;
+}node;
 
 
-// Método para crear la función hash
+// Insertar un valor en la tabla hash
+void insert(node* hashTable[], travel t) {
+    // Obtener el índice en la tabla hash
+    int index = hash(t.sourceid);
 
-hash_table *create_hash(int size) {
-
-    hash_table *hash_table = malloc(sizeof(hash_table)); // Creación de tabla hash vacia
+    // Crear un nuevo nodo para el valor a insertar
+    node* newNode = (node*)malloc(sizeof(node));
     
-    
-    if(hash_table == NULL){// Error creación hash table
-        return NULL;
+    newNode->t = t;
+    newNode->next = NULL;
+
+    // Si la posición en la tabla hash está vacía, insertar el nuevo nodo
+    if (hashTable[index] == NULL) {
+        hashTable[index] = newNode;
     }
+    // Si la posición ya contiene elementos, agregar el nuevo nodo al final de la lista
+    else {
+        printf("Colisión en la posición %d\n", index);
+        node* current = hashTable[index];
+        while (current->next != NULL) {
+            current = current->next;
 
-    hash_table->size = size;
-    hash_table->buckets = size;
-    
-    // Guardar llaves en un arreglo de tamaño de la cantidad de llaves
-    
-    hash_table->keys = calloc(size, sizeof(int));
-    
-    if(hash_table->keys == NULL){// Error creación key
-        return NULL;
+        }
+        current->next = newNode;
     }
-    
-    // Creación arreglo para los valores de las keys
-
-    for(int i = 0 ; i < size ; i++){
-        hash_table->keys[i] = (char *) malloc(sizeof(char));
-        hash_table->keys[i] = 0 ;
-    }
-    
-    hash_table->values = calloc(size, sizeof(char *)); //cambiar size a 2
-    hash_table->values2 = calloc(size, sizeof(char *));
-    hash_table->values3 = calloc(size, sizeof(char *));
-    
-    return hash_table;
-
-
 }
 
-int destruirHash(hash_table **hash_table){
-    int i ;
-    int size ;
-
-    // Verificar que el apuntador valido
-    if (hash_table == NULL || *hash_table == NULL) {
-        return 1;
+// Buscar un valor en la tabla hash
+float search_v(node* table[], int sourceid) {
+    // Obtener el índice en la tabla hash
+    int index = hash(sourceid);
+    printf("LA llave es: %d\n", index);
+    // Recorrer la lista en la posición correspondiente hasta encontrar el valor o llegar al final de la lista
+    node* current = table[index];
+    
+    while (current != NULL) {
+        travel t = current->t;
+        if (t.sourceid == sourceid){
+            printf("El valor encontrado es: %f\n", t.mean_travel_time);
+            return t.mean_travel_time;
+        }
+        current = current->next;
     }
 
-    // Liberar memoria asociada a los valores almacenados
-
-    size = (*hash_table)->size;
-    for(i = 0 ; i < size ; i ++){
-        free((*hash_table)->values[i]); // Liberar memoria para el array de valores
-    }
-
-    // Liberar memoria asociada a los arreglos de key y values
-    free((*hash_table)->values);
-    free((*hash_table)->keys);
-
-    // Liberar memoria de la estructura 
-    free(*hash_table);
-    return 0 ;
-
-}
-
-int insertar(hash_table *hash_table,int sourceid, int dstid,int hod,int media){
-    
-    //printf("Media -> %d\n",media);
-
-    // Verificar que el apuntador de la tabla existe
-
-    if(hash_table == NULL){
-        perror("Hastable no existe");
-        exit(-1);
-    }
-    
-    // Verificar que hay buckets disponibles
-
-    if(hash_table->buckets <= 0 ){
-        perror("No hay más espacio en la tabla hash");
-        exit(-1);
-    }
-    
-    // Aplicar f(x) hash para el valor key
-
-    int index ;
-
-    index = sourceid % hash_table->size;
-    
-
-    // Si el array esta vacio se inserta ahí
-    
-    
-    if(hash_table->keys[index] == 0){
-
-        // Creación de arreglo para los valores
-        int* arr = (int*) malloc(2 * sizeof(int));
-        arr[0] = dstid;
-        arr[1] = hod;
-
-        hash_table->keys[index] = sourceid ; 
-        hash_table->values[index] = arr[0] ;
-        hash_table->values2[index] = arr[1] ;
-        hash_table->values3[index] = media;
-        hash_table->buckets --; // Se resta para saber que quedan menos buckets libres
-        
-    }
-
-    
-};
-
-int count_rows(FILE *file) {// Contar filas
-    int count = 0;
-    char line[1024];
-
-    while (fgets(line, 1024, file)) {
-        count++;
-    }
-
-    return count;
+    // Si no se encontró el valor, retornar -1
+    return -1;
 }
 
 
-void search(int *data){
+int hash(int key) {
+    int index = (key % 800000) + 1; // Convertir la llave en un índice en el rango de 1 a 1162
+    return index;
+}
+/*void search(int *data){
     printf("\n\nLa dirección de memoria: %p\n", data);
     printf("Los datos ingresados fueron: %d, %d, %d\n", *data, *(data+1), *(data+2));
 
@@ -162,56 +88,54 @@ void search(int *data){
 
     int num_rows = count_rows(file);
 
-
     fclose(file);
-    
-    /* Creación de la tabla hash */
 
-    hash_table *tabla = NULL;
-    tabla = create_hash(num_rows);
+    nodo* tabla = crearTabla();
 
+}*/
 
+void search(){
+    static node* table[TABLE_SIZE];
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        table[i] = NULL;
+    } 
     
-    //   Insertar valores en la tabla hash */
-    
-    
-    FILE *file2 = fopen("datos.csv","r");
+    FILE* fp = fopen("../data/bogota-cadastral-2019-3-All-HourlyAggregate.csv", "r");
+    if (fp == NULL) {
+        printf("No se pudo abrir el archivo.\n");
+        exit(EXIT_FAILURE);
+    }
+    char buffer[1024];
+    // Leer los valores del archivo y agregarlos a la tabla hash
+    int sourceid, dstid, hod;
+    float mean_travel_time;
+    int row = 0;
 
-    if (!file2) { // Error abrir archivo
-        printf("No se pudo abrir el archivo\n");
-        exit(1);
+    while (fgets(buffer, 1024, fp)){   
+        if (row == 0){
+            row++;
+            continue;
+        }
+        sscanf(buffer, "%d,%d,%d,%f",&sourceid,&dstid,&hod,&mean_travel_time);
+        travel current;
+        current.sourceid = sourceid;
+        current.dstid = dstid;
+        current.hod = hod;
+        current.mean_travel_time = mean_travel_time;
+        insert(table, current);
+        row++;
     }
     
-    char line[1024];
-    while (fgets(line, 1024, file2)) {
-        // Guardar en variables diferentes los datos del archivo csv
+        
+    // Cerrar el archivo
+    fclose(fp);
 
-        int sourceid; 
-        int dstid; 
-        int hod;
-        int m; 
+    printf("El valor encontrado es: %f\n", search_v(table, 462));
+}
 
-        fscanf(file2,"%d,%d,%d,%d",&sourceid,&dstid,&hod,&m);
-        //printf("*-> %d\n",m);
-        insertar(tabla,sourceid,dstid,hod,m);
-    }
-
-    // Busqueda del elemento
-
-    int index ;
-    
-    index = *data % tabla->size;
-
-    if(*data ==tabla->keys[index] && *(data+1) == tabla->values[index] && *(data+2) == tabla->values2[index] ){
-        printf("Tiempo de viaje medio -> %d \n",tabla->values3[index]);
-    }else{
-        printf("NA");
-    }
-    
-
-    
-    
-
+int main(int argc, char *argv[]) {
+    search();
+    return 0;
 }
 
 /*
