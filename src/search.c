@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define TABLE_SIZE 1500 // tamaño de la tabla hash
-#define SIZE 1000 // número de registros en el archivo binario
+#define TABLE_SIZE 2500 // tamaño de la tabla hash
+#define SIZE 9000000 // número de registros en el archivo binario
 #define RECORD_SIZE sizeof(travel_t) // tamaño de cada registro en el archivo binario
 #define INTSIZE sizeof(int) // tamaño de un entero
 #define FLOATSIZE sizeof(float) // tamaño de un flotante
@@ -15,6 +15,12 @@ typedef struct {
     int hod;
     float mean_travel_time;
 } travel_t;
+// Node
+
+struct node {
+    int data;
+    struct node* next;
+};
 
 // estructura para la tabla hash
 typedef struct {
@@ -40,6 +46,22 @@ unsigned int hash(int key) {
     return hash % TABLE_SIZE;
 }
 
+void write_list_to_file(struct node* head, const char* filename) {
+    FILE* fp = fopen(filename, "wb");
+    if (fp == NULL) {
+        printf("Error opening file for writing\n");
+        return;
+    }
+
+    struct node* current = head;
+    while (current != NULL) {
+        fwrite(current, sizeof(struct node), 1, fp);
+        current = current->next;
+    }
+
+    fclose(fp);
+}
+
 // función para agregar un registro a la tabla hash
 void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
     // calcular el índice en la tabla hash
@@ -47,7 +69,20 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
     unsigned int index = hash(key);
     
     // buscar un espacio libre en la tabla hash
+    
     while (table[index].key != -1) {
+        // Creacion del nodo
+
+        struct node* next = malloc(sizeof(struct node));
+        next->next = table[key].key;
+        next->data = data;
+        fwrite(next,sizeof(struct node ),1,file);
+        return;
+
+        // creacion del nodo siguiente
+        //struct node*  = malloc(sizeof(struct node));
+        /*
+        
         if (table[index].key == key){
             printf("COLISION EN LA HASH");
             // buscar el índice del siguiente registro en el archivo binario
@@ -71,7 +106,9 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
             table[index].offset = next_offset;//actualizar el offset del registro en la tabla hash
             return;
         }
-        index = (index + 1);
+        index = (index + 1)}
+        */
+
     }
     // agregar la nueva entrada a la tabla hash
     table[index].key = key;//añadir un registro a la tabla hash en la posicion index
@@ -79,7 +116,7 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
     // buscar un espacio libre en el archivo binario para el nuevo registro
     fseek(file, 0, SEEK_END);
     long int offset = ftell(file);
-    printf("key: %d,hash=%d,offset=%d\n",key,index,offset);
+    //printf("key: %d,hash=%d,offset=%d\n",key,index,offset);
     int r=fwrite(data, sizeof(travel_t), 1, file);
     if (r==0){
         perror("Error al escribir el registro");
@@ -92,17 +129,33 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
 // función para buscar un registro en la tabla hash
 void find_record(hash_entry_t *table, FILE *file, int sourceid, int dstid, int hod) {
     // calcular el índice en la tabla hash
-    printf("La direccion del archivo es: %p\n", file);
+    
+    //printf("La direccion del archivo es: %p\n", file);
+    
     int key = sourceid;
     unsigned int index = hash(key);
     long i = table[index].offset;
-    printf("El offset del registro es: %ld\n", i);
+    
+    //printf("El offset del registro es: %ld\n", i);
+    
     travel_t record;
     fseek(file, i, SEEK_SET);
     fread(&record, sizeof(travel_t), 1, file);
 
-    printf("Registro encontrado en primero: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
+    //printf("Registro encontrado en primero: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
+    while(record.sourceid == sourceid){
+        if (record.dstid == dstid && record.hod == hod){
+            printf("Registro encontrado en: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
 
+        }else{
+            struct node* current = head;
+            while()
+        }
+        
+
+    }
+    /*
+    
     while (record.sourceid == sourceid){
         printf("Registro encontrado en: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
         fseek(file, i, SEEK_SET);
@@ -113,6 +166,7 @@ void find_record(hash_entry_t *table, FILE *file, int sourceid, int dstid, int h
         }
         i-=RECORD_SIZE;
     }
+    */
     // el registro no se encontró
     printf("Registro no encontrado\n");
 }
@@ -133,7 +187,7 @@ void search(){
         exit(EXIT_FAILURE);
     }
     
-    FILE *fp = fopen("../data/bogota-cadastral-2019-3-All-HourlyAggregate.csv", "r");
+    FILE *fp = fopen("../src/datos.csv", "r");
     if (fp == NULL){
         printf("Error al abrir el archivo\n");
         exit(EXIT_FAILURE);
@@ -152,7 +206,7 @@ void search(){
             break;
         }
         sscanf(buffer, "%d,%d,%d,%f",&sourceid,&dstid,&hod,&mean_travel_time);
-        printf("%d,%d,%d,%f\n",sourceid,dstid,hod,mean_travel_time);
+        //printf("%d,%d,%d,%f\n",sourceid,dstid,hod,mean_travel_time);
         travel_t record;
         record.sourceid = sourceid;
         record.dstid = dstid;   
@@ -162,7 +216,7 @@ void search(){
         row++;
     }
 
-    find_record(table,file,489,58,16);
+    find_record(table,file,106,996,22);
     fclose(file);
     fclose(fp);
 }
