@@ -4,7 +4,6 @@
 
 int* input(int *shm){
     /*Imprimir interfaz del home*/
-    
     printf("Bienvenido\n"
             "1. Ingresar origen\n"
             "2. Ingresar destino\n"
@@ -41,9 +40,9 @@ int* input(int *shm){
 };
 
 void errors(int *value, int left, int right){
-    /**/
     while (*value<left || *value>right){
         printf("Error, ingrese un valor válido, entre %d y %d:", left, right);
         scanf("%d", value);
     }
 }
+

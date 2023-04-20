@@ -10,6 +10,7 @@
 #define MAX_LEN 10
 
 int* input();
+float search(int *shm);
 main(){
     // Variables
 
@@ -43,11 +44,14 @@ main(){
         /*Padre*/
         while (wait(NULL)!=-1){/*Esperar hasta que el proceso hijo termine su ejecución*/
             // Se ejecuta la busqueda haciendo uso de la memoria compartida con los datos expuestos    
-            float *time = search(shm);
-            shm[4]=time;
+            float result = search(shm);
+            if (result == -1){
+                printf("No se encontró un tiempo de viaje medio para el origen %d, destino %d y hora %d", shm[0], shm[1], shm[2]);
+            }else{
+                printf("El tiempo de viaje medio para el origen %d, destino %d y hora %d es de %f minutos", shm[0], shm[1], shm[2], result);
+            }
         }
     }
-
     r = shmdt(shm);  //desasociar espacio de memoria compartida
     if (r < 0) //Verificación de que shmdt se ejecutó correctamente
     {

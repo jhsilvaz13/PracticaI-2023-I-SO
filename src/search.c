@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
+#include "search.h"
 
 #define TABLE_SIZE 1500 // tamaño de la tabla hash
 #define SIZE 1000 // número de registros en el archivo binario
@@ -24,9 +26,8 @@ typedef struct {
 
 unsigned int hash(int key);
 void insert_record(hash_entry_t *table, FILE *file, travel_t *data);
-void find_record(hash_entry_t *table, FILE *file, int sourceid, int dstid, int hod);
-void search();
-void print_result(travel_t *result);
+float find_record(hash_entry_t *table, FILE *file, int sourceid, int dstid, int hod);
+float search(int *data);
 
 // función de hash
 unsigned int hash(int key) {
@@ -49,7 +50,6 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
     // buscar un espacio libre en la tabla hash
     while (table[index].key != -1) {
         if (table[index].key == key){
-            printf("COLISION EN LA HASH");
             // buscar el índice del siguiente registro en el archivo binario
             long int next_offset = -1;
             next_offset = table[index].offset+RECORD_SIZE;
@@ -79,7 +79,6 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
     // buscar un espacio libre en el archivo binario para el nuevo registro
     fseek(file, 0, SEEK_END);
     long int offset = ftell(file);
-    printf("key: %d,hash=%d,offset=%d\n",key,index,offset);
     int r=fwrite(data, sizeof(travel_t), 1, file);
     if (r==0){
         perror("Error al escribir el registro");
@@ -88,36 +87,30 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
     table[index].offset = offset;
 }
 
-
 // función para buscar un registro en la tabla hash
-void find_record(hash_entry_t *table, FILE *file, int sourceid, int dstid, int hod) {
+float find_record(hash_entry_t *table, FILE *file, int sourceid, int dstid, int hod) {
     // calcular el índice en la tabla hash
-    printf("La direccion del archivo es: %p\n", file);
     int key = sourceid;
     unsigned int index = hash(key);
     long i = table[index].offset;
-    printf("El offset del registro es: %ld\n", i);
+
     travel_t record;
     fseek(file, i, SEEK_SET);
     fread(&record, sizeof(travel_t), 1, file);
-
-    printf("Registro encontrado en primero: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
-
     while (record.sourceid == sourceid){
-        printf("Registro encontrado en: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
         fseek(file, i, SEEK_SET);
         fread(&record, sizeof(travel_t), 1, file);  
         if (record.dstid == dstid && record.hod == hod){
-            printf("Registro encontrado: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
-            return;
+            return record.mean_travel_time;
         }
         i-=RECORD_SIZE;
     }
     // el registro no se encontró
-    printf("Registro no encontrado\n");
+    return -1;
 }
 
-void search(){
+float search(int *data){
+    float result = -1;
     // inicializar la tabla hash
     hash_entry_t table[TABLE_SIZE];
 
@@ -125,49 +118,53 @@ void search(){
         table[i].key = -1;
         table[i].offset = -1;
     }
-    
-     // abrir el archivo binario en modo de lectura y escritura
-    FILE *file = fopen("datat.bin", "w+");
-    if(file == NULL){
-        printf("Error al abrir el archivo\n");
-        exit(EXIT_FAILURE);
-    }
-    
-    FILE *fp = fopen("../data/bogota-cadastral-2019-3-All-HourlyAggregate.csv", "r");
-    if (fp == NULL){
-        printf("Error al abrir el archivo\n");
-        exit(EXIT_FAILURE);
-    }
 
-    char buffer[1024];
-    int row = 0;
-    int sourceid, dstid, hod;
-    float mean_travel_time;
-    while (fgets(buffer, 1024, fp)){   
-        if (row == 0 ){
+    // abrir el archivo binario
+    FILE *file = fopen("../data/hash_table.bin", "rb+");
+        // el archivo no existe, crearlo
+        file = fopen("../data/hash_table.bin", "wb+");
+        if (file == NULL) {
+            perror("Error al abrir el archivo binario\n");
+            exit(EXIT_FAILURE);
+        }
+        //abrir el archivo csv
+        FILE *fp = fopen("../data/bogota-cadastral-2019-3-All-HourlyAggregate.csv", "r");
+        if (fp == NULL){
+            perror("Error al abrir el archivo\n");
+            exit(EXIT_FAILURE);
+        }
+        char buffer[1024];//buffer para leer cada linea del archivo csv
+        int row = 0;//contador de filas
+        int sourceid, dstid, hod;
+        float mean_travel_time;
+        while (fgets(buffer, 1024, fp)){   
+            if (row == 0 ){
+                row++;
+                continue;
+            }
+            if(row >=SIZE){
+                //numero de registros a leer
+                break;
+            }
+            sscanf(buffer, "%d,%d,%d,%f",&sourceid,&dstid,&hod,&mean_travel_time);//leer cada linea del archivo csv
+            travel_t record;//crear un registro
+            record.sourceid = sourceid;
+            record.dstid = dstid;
+            record.hod = hod;
+            record.mean_travel_time = mean_travel_time;
+            insert_record(table, file,&record);//insertar el registro en la tabla hash
             row++;
-            continue;
         }
-        if(row >=SIZE){
-            break;
-        }
-        sscanf(buffer, "%d,%d,%d,%f",&sourceid,&dstid,&hod,&mean_travel_time);
-        printf("%d,%d,%d,%f\n",sourceid,dstid,hod,mean_travel_time);
-        travel_t record;
-        record.sourceid = sourceid;
-        record.dstid = dstid;   
-        record.hod = hod;
-        record.mean_travel_time = mean_travel_time;
-        insert_record(table, file,&record);
-        row++;
-    }
-
-    find_record(table,file,489,58,16);
+        fclose(fp);
+        /*for(int i=0; i<SIZE*RECORD_SIZE; i+=RECORD_SIZE){
+            travel_t record;
+            fseek(file, i, SEEK_SET);
+            fread(&record, sizeof(travel_t), 1, file);
+            printf("as: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
+        }*/
+        result=find_record(table,file,*(data),*(data+1),*(data+2));
+        printf("Resultado: %f\n", result);
+        return result;
+    
     fclose(file);
-    fclose(fp);
-}
-
-int main() {
-    search();
-    return 0;
 }
