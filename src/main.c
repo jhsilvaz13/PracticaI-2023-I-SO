@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,8 +7,9 @@
 #include "interfaz.h"
 #include "search.h"
 
-int* input();
+#define MAX_LEN 10
 
+int* input();
 main(){
     // Variables
 
@@ -30,24 +32,27 @@ main(){
 
     /*Crear dos procesos*/
     __pid_t pid=fork();
-    
+
     if(pid==-1){
         perror("Error en la creación de procesos");
         exit(EXIT_FAILURE);
-    }
-    else if(pid==0){
+    }else if(pid==0){
         // Se ejecuta la interfaz del programa mandando el puntero de la memoria compartida
         input(shm);
-
     }else{
         /*Padre*/
         while (wait(NULL)!=-1){/*Esperar hasta que el proceso hijo termine su ejecución*/
             // Se ejecuta la busqueda haciendo uso de la memoria compartida con los datos expuestos    
-            search(shm);
-            
+            float *time = search(shm);
+            shm[4]=time;
         }
     }
-    r = shmdt(shm);  //desasociar espacio de memoria compartida
 
+    r = shmdt(shm);  //desasociar espacio de memoria compartida
+    if (r < 0) //Verificación de que shmdt se ejecutó correctamente
+    {
+        perror("error al desasociar el espacio de memoria compartida ");
+        exit(EXIT_FAILURE);
+    }
     return 0;
 }
