@@ -1,9 +1,13 @@
 # Primera práctica de Sistemas Operativos 2023-I
 
-## Código para comppilar 
+## Código para compilar y ejecutar el programa
 
-gcc p1-odProgram.c interfaz.c search.c -o main
 
+```console
+user@bar:~$ make
+user@bar:~$ ./programa
+
+```
 # Integrantes 
 
 * Mateo Gutiérrez Melo -mgutierrezca@unal.edu.co
