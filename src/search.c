@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include "search.h"
 
-#define TABLE_SIZE 1500 // tamaño de la tabla hash
-#define SIZE 1000 // número de registros en el archivo binario
+#define TABLE_SIZE 80000 // tamaño de la tabla hash
+#define SIZE 50000// número de registros en el archivo binario
 #define RECORD_SIZE sizeof(travel_t) // tamaño de cada registro en el archivo binario
 #define INTSIZE sizeof(int) // tamaño de un entero
 #define FLOATSIZE sizeof(float) // tamaño de un flotante
@@ -48,7 +48,7 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
     unsigned int index = hash(key);
     
     // buscar un espacio libre en la tabla hash
-    while (table[index].key != -1) {
+    //while (table[index].key != -1) {
         if (table[index].key == key){
             // buscar el índice del siguiente registro en el archivo binario
             long int next_offset = -1;
@@ -69,10 +69,17 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
             fseek(file, next_offset, SEEK_SET);//despqzar el puntero al inicio del registro a mover
             fwrite(data, sizeof(travel_t), 1, file);//escribir el registro
             table[index].offset = next_offset;//actualizar el offset del registro en la tabla hash
+
+            for (unsigned int i = 0; i < TABLE_SIZE; i++) {//actualizar los offsets de los registros que se movieron
+                    if (table[i].key != -1 && table[i].key != table[index].key){//selecccion unicamnete los registros que se movieron
+                        if(table[i].offset >= next_offset)
+                            table[i].offset += RECORD_SIZE;
+                    }
+                }
             return;
         }
-        index = (index + 1);
-    }
+        //index = (index + 1);
+    //}
     // agregar la nueva entrada a la tabla hash
     table[index].key = key;//añadir un registro a la tabla hash en la posicion index
     
@@ -80,11 +87,13 @@ void insert_record(hash_entry_t *table, FILE *file, travel_t *data) {
     fseek(file, 0, SEEK_END);
     long int offset = ftell(file);
     int r=fwrite(data, sizeof(travel_t), 1, file);
+    printf("Se escribió: %d %d %d %f en la pos: %ld\n",data->sourceid, data->dstid, data->hod, data->mean_travel_time,offset);
     if (r==0){
         perror("Error al escribir el registro");
         exit(EXIT_FAILURE);
     }
     table[index].offset = offset;
+    return;
 }
 
 // función para buscar un registro en la tabla hash
@@ -97,6 +106,9 @@ float find_record(hash_entry_t *table, FILE *file, int sourceid, int dstid, int 
     travel_t record;
     fseek(file, i, SEEK_SET);
     fread(&record, sizeof(travel_t), 1, file);
+
+    printf("El registro encontrado en la base fue:%d %d %d %f\n",record.sourceid,record.dstid,record.hod,record.mean_travel_time,table[index].offset);
+    printf("El valor hash: %d y su offset: %ld",index,i);
     while (record.sourceid == sourceid){
         fseek(file, i, SEEK_SET);
         fread(&record, sizeof(travel_t), 1, file);  
@@ -112,7 +124,7 @@ float find_record(hash_entry_t *table, FILE *file, int sourceid, int dstid, int 
 float search(int *data){
     float result = -1;
     // inicializar la tabla hash
-    hash_entry_t table[TABLE_SIZE];
+    hash_entry_t* table=(hash_entry_t*)malloc(sizeof(hash_entry_t)*TABLE_SIZE);
 
     for (int i = 0; i < TABLE_SIZE; i++) {
         table[i].key = -1;
@@ -142,7 +154,7 @@ float search(int *data){
                 row++;
                 continue;
             }
-            if(row >=SIZE){
+            if(row >SIZE){
                 //numero de registros a leer
                 break;
             }
@@ -156,13 +168,14 @@ float search(int *data){
             row++;
         }
         fclose(fp);
-        /*for(int i=0; i<SIZE*RECORD_SIZE; i+=RECORD_SIZE){
+        for(int i=0; i<SIZE*RECORD_SIZE; i+=RECORD_SIZE){
             travel_t record;
             fseek(file, i, SEEK_SET);
             fread(&record, sizeof(travel_t), 1, file);
-            printf("as: %d %d %d %f\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time);
-        }*/
+            printf("record: %d %d %d %f offset->%ld\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time,i);
+        }
         result=find_record(table,file,*(data),*(data+1),*(data+2));
+        free(table);
         printf("Resultado: %f\n", result);
         return result;
     
