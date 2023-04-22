@@ -155,21 +155,7 @@ char * search(int *data){
     printf("Los datos ingresados fueron: %d, %d, %d\n", *data, *(data+1), *(data+2));
 
     // Obtener el tamaño de filas del archivo
-    
-    // FILE *file = fopen("datos.csv", "r");
-    
-    // if (!file) {
-    //     printf("No se pudo abrir el archivo\n");
-    //     exit(1);
-    // }
 
-    // int num_rows = count_rows(file);
-
-    // printf("Numero de columnas: %d", num_rows);
-
-
-    // fclose(file);
-    
     /* Creación de la tabla hash */
 
     hash_table *tabla = NULL;
@@ -215,17 +201,6 @@ char * search(int *data){
     }
     
 
-    
-    
-
 }
 
-/*
-Cosas por hacer:
-1. Los datos deben quedar almacenados en un archivo binario, generar la tabla hash en memoria solo en la primera compilacion
-2. Comunicar el resultado de busqueda hacia el proceso hijo --
-                    --> El proceso hijo ya acabó su ejecución cuando entra al search, 
-                        entonces simplemente se manda el resultado de la búsqueda al main
-3. Hacer la función de rehash (?)
 
-*/

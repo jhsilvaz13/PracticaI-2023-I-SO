@@ -9,6 +9,7 @@
 #define MAX_LEN 10
 
 int* input();
+
 main(){
     // Variables
 
