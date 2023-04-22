@@ -28,7 +28,6 @@ main(){
     }
     
     //Asociar espacio de memoria creada a este proceso
-
     shm = shmat(shmId, NULL, 0);
 
     /*Crear dos procesos*/
@@ -46,16 +45,16 @@ main(){
             // Se ejecuta la busqueda haciendo uso de la memoria compartida con los datos expuestos    
             float result = search(shm);
             if (result == -1){
-                printf("No se encontró un tiempo de viaje medio para el origen %d, destino %d y hora %d", shm[0], shm[1], shm[2]);
+                printf("No se encontró un tiempo de viaje medio para el origen %d, destino %d y hora %d\n", shm[0], shm[1], shm[2]);
             }else{
-                printf("El tiempo de viaje medio para el origen %d, destino %d y hora %d es de %f minutos", shm[0], shm[1], shm[2], result);
+                printf("El tiempo de viaje medio para el origen %d, destino %d y hora %d es de %f minutos\n", shm[0], shm[1], shm[2], result);
             }
         }
     }
     r = shmdt(shm);  //desasociar espacio de memoria compartida
     if (r < 0) //Verificación de que shmdt se ejecutó correctamente
     {
-        perror("error al desasociar el espacio de memoria compartida ");
+        perror("error al desasociar el espacio de memoria compartida");
         exit(EXIT_FAILURE);
     }
     return 0;
