@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include "search.h"
 
-#define TABLE_SIZE 8543142       // número de registros que se van a leer del archivo csv
+#define TABLE_SIZE 8543142      // número de registros que se van a leer del archivo csv
 #define RECORD_SIZE sizeof(travel_t) // tamaño de cada registro en el archivo binario
 #define INTSIZE sizeof(int)          // tamaño de un entero
 #define FLOATSIZE sizeof(float)      // tamaño de un flotante
@@ -14,10 +14,10 @@ typedef struct
 {
     int sourceid;//identificador del origen
     int dstid;//identificador del destino
-    int hod;//hora del dia
+    int hod;//hora del dial
     float mean_travel_time;//tiempo de viaje medio
     long int next_offset;//posicion del siguiente registro en la lista enlazada en el archivo
-    int registers;//numero de registros que estan despues del registro actual en la lista enlazada en el archivo
+    int first;
 
 } travel_t;
 
@@ -29,14 +29,7 @@ float search(int *data);//funcion para buscar un registro en la tabla hash
 // función de hash
 unsigned int hash(int key)
 {
-    unsigned int a = 2654435761; // constante usada en la función de hash de Jenkins
-    unsigned int hash = a * key;
-    hash = hash ^ (hash >> 16);
-    hash = hash * a;
-    hash = hash ^ (hash >> 16);
-    hash = hash * a;
-    hash = hash ^ (hash >> 16);
-    return hash % TABLE_SIZE;
+    return key;
 }
 
 // función para agregar un registro a la tabla hash
@@ -45,49 +38,44 @@ void insert_record(FILE *file, travel_t *data)
     // calcular el índice en donde se va escribir el registro
     int key = data->sourceid;
     unsigned int index = hash(key);
-
     travel_t record;//almacenar en memoria el registro que se va a leer
     fseek(file, index*RECORD_SIZE, SEEK_SET);//poner el puntero en la posicion del registro que se va a leer
-    fread(&record, sizeof(travel_t), 1, file);//leer el registro
-    fseek(file, index*RECORD_SIZE, SEEK_SET);//poner el puntero en la posicion del registro que se va a leer
-    
-    if(record.sourceid >0 && record.sourceid<=1160)
-    //si el sourceid del registro que se leyo esta entre 1 y 1160 es porque ya hay un registro en esa posicion
-    //entonces se debe hacer una colision, no interesa si los sourceid son diferentes la hash son las iguales
-    {   
-        //Colision en el archivo binario
-        int reg=record.registers+1;//a la lista enlazada en archivo se le va a agregar un registro mas
-        int aux=reg;//variable auxiliar para recorrer la lista enlazada
-        while(aux>0){//mientras el numero de registros en la lista enlazada sea mayor a 0
-            //se calcula en que posicion del archivo se va a escribir el siguinte registro
-            record.next_offset=(((reg-record.registers)*TABLE_SIZE+index)*RECORD_SIZE);
-            //se aumenta el numero de registros en la lista enlazada
-            record.registers++;
-            //se sobre escribe el registro en la posicion actual del archivo
-            fwrite(&record, sizeof(travel_t), 1, file);
-            //se cambia el puntero a la posicion del siguiente registro en la lista enlazada
-            fseek(file, record.next_offset, SEEK_SET);
-            //se lee el registro en la posicion actual del archivo
-            fread(&record, sizeof(travel_t), 1, file);
-            //se retrocede un registro en el archivo pues acabamos de hacer lectura
-            fseek(file, -RECORD_SIZE, SEEK_CUR);
-            aux--;
-        }
-        //una vez se actualizaron todos los registros en la lista enlazada se escribe el nuevo registro al final
-        data->next_offset =-1;
-        data->registers = 0;
-        //se escribe el nuevo registro en la posicion actual del archivo
-        fwrite(data, sizeof(travel_t), 1, file);
-        fseek(file, -RECORD_SIZE, SEEK_CUR);
-        return;
-    }
-    
-    //escribir el nuevo registro en la posicion index del archivo binario
-    data->next_offset =-1;
-    data->registers = 0;
-    int r =fwrite(data, sizeof(travel_t), 1, file); // escribir el registro en el archivo binario en la posicion
-    if (r == 0)
+    fread(&record,sizeof(travel_t), 1, file);//leer el registro
+    if(record.sourceid==data->sourceid)
+    //Leemos el regitro en la posicion de index y vemos si el srcid es el mismo 
     {
+        while(record.next_offset!=-1){
+             //Colision en el archivo binario
+            fseek(file, record.next_offset,SEEK_SET);
+            fread(&record,sizeof(travel_t),1,file);
+        }
+            //Se agrega el nuevo registro al final del achivo binario
+            fseek(file,-RECORD_SIZE,SEEK_CUR);
+            long int aux=ftell(file);
+            fseek(file, 0, SEEK_END);
+            long int next_offset=ftell(file);
+            record.next_offset=next_offset;
+            fseek(file, aux, SEEK_SET);
+            fwrite(&record, sizeof(travel_t), 1, file);
+            data->next_offset =-1;
+            data->first==0;       
+            fseek(file, 0, SEEK_END);
+            //se escribe el nuevo registro en la posicion actual del archivo
+            fwrite(data, sizeof(travel_t), 1, file);
+        //}
+        return;
+        
+    }
+
+    if(record.sourceid==0 && record.dstid==0 && record.hod==0 && record.mean_travel_time==0){
+       fseek(file, -RECORD_SIZE, SEEK_CUR); 
+    }
+
+    //escribir el nuevo registro en la posicion index del archivo binario
+    data->first=1;
+    data->next_offset =-1;
+    int r =fwrite(data, sizeof(travel_t), 1, file); // escribir el registro en el archivo binario en la posicion
+    if (r == 0){
         perror("Error al escribir el registro");
         exit(EXIT_FAILURE);
     }
@@ -95,27 +83,23 @@ void insert_record(FILE *file, travel_t *data)
 }
 
 // función para buscar un registro en la tabla hash
-float find_record(FILE *file, int sourceid, int dstid, int hod)
-{
-    // calcular el índice en la tabla hash
+float find_record(FILE *file, int sourceid, int dstid, int hod){
     int key = sourceid;
     unsigned int index = hash(key);
-
-    travel_t record;//almacenar en memoria los registros que se van a leer
-    fseek(file, index*RECORD_SIZE, SEEK_SET);//buscamos mediante el indice la posicion del 
-    //primer registro en la lista enlazada en el archivo
-    while (record.next_offset != -1){//iteramos mientras el siguiente registro en la lista enlazada sea diferente de -1
-        //leemos el registro en la posicion actual del archivo
-        fread(&record, sizeof(travel_t), 1, file);  
-        //si el registro que se leyo tiene los mismos valores que los que se estan buscando se retorna el valor
-        if (record.sourceid==sourceid &&record.dstid == dstid && record.hod == hod){
+    travel_t record;//almacenar en memoria el registro que se va a leer
+    fseek(file, index*RECORD_SIZE, SEEK_SET);//poner el puntero en la posicion del registro que se va a leer
+    while (record.next_offset!=-1){
+        fread(&record,sizeof(travel_t), 1, file);//leer el registro
+        if(record.sourceid==sourceid && record.dstid==dstid && record.hod==hod){
             return record.mean_travel_time;
         }
-        //sino se cambia el puntero a la posicion del siguiente registro en la lista enlazada
-        fseek(file, record.next_offset, SEEK_SET);
+        fseek(file, record.next_offset,SEEK_SET);
+        printf("record: %d %d %d %f %ld %d\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time, record.next_offset, record.first);
     }
-    // el registro no se encontró
+
     return -1;
+    
+
 }
 
 float search(int *data)
@@ -134,6 +118,18 @@ float search(int *data)
             perror("Error en la creación del archivo binario\n");
             exit(EXIT_FAILURE);
         }
+
+        long int max=1159*RECORD_SIZE;
+        travel_t a;
+        a.sourceid=0;
+        a.dstid=0;
+        a.hod=0;
+        a.mean_travel_time=0;
+        a.next_offset=0;
+        a.first=0;
+        fseek(file, max, SEEK_SET);
+        fwrite(data, sizeof(travel_t), 1, file);
+        fseek(file, 0, SEEK_SET);
         // abrir el archivo csv
         FILE *fp = fopen(PATH, "r");
         if (fp == NULL){
@@ -158,17 +154,18 @@ float search(int *data)
             record.dstid = dstid;//asignar los valores leidos al registro
             record.hod = hod;//asignar los valores leidos al registro
             record.mean_travel_time = mean_travel_time;//asignar los valores leidos al registro
+            printf("Insertando el registro %d\n",row);
             insert_record(file, &record); // insertar el registro en la tabla hash
             row++;
         }
         fclose(fp);//cerrar el archivo csv
         /*Descomentar si desea imprimir toda la estructura del archivo binario que almacena la tabla hash */
-        /*for (int i = 0; i < TABLE_SIZE * RECORD_SIZE*10; i += RECORD_SIZE){
+        for (int i = 0; i < TABLE_SIZE * RECORD_SIZE*10; i += RECORD_SIZE){
             travel_t record;
             fseek(file, i, SEEK_SET);
             fread(&record, sizeof(travel_t), 1, file);
-            printf("record: %d %d %d %f %ld %d offset --> %d\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time, record.next_offset, record.registers,i);
-        }*/
+            printf("record: %d %d %d %f %ld %d offset --> %d\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time, record.next_offset, record.first,i);
+        }
 
         //Una vez escrita la tabla hash en el archivo binario se busca el registro
         printf("Buscando el registro en la tabla hash...\n");
