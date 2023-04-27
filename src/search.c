@@ -94,7 +94,6 @@ float find_record(FILE *file, int sourceid, int dstid, int hod){
             return record.mean_travel_time;
         }
         fseek(file, record.next_offset,SEEK_SET);
-        printf("record: %d %d %d %f %ld %d\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time, record.next_offset, record.first);
     }
 
     return -1;
@@ -160,12 +159,11 @@ float search(int *data)
         }
         fclose(fp);//cerrar el archivo csv
         /*Descomentar si desea imprimir toda la estructura del archivo binario que almacena la tabla hash */
-        for (int i = 0; i < TABLE_SIZE * RECORD_SIZE*10; i += RECORD_SIZE){
+        /*for (int i = 0; i < TABLE_SIZE * RECORD_SIZE*10; i += RECORD_SIZE){
             travel_t record;
             fseek(file, i, SEEK_SET);
             fread(&record, sizeof(travel_t), 1, file);
-            printf("record: %d %d %d %f %ld %d offset --> %d\n", record.sourceid, record.dstid, record.hod, record.mean_travel_time, record.next_offset, record.first,i);
-        }
+        }*/
 
         //Una vez escrita la tabla hash en el archivo binario se busca el registro
         printf("Buscando el registro en la tabla hash...\n");
